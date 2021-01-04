@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <RelativeLayout
+        android:id="@+id/main_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <com.personal.xj.easycamera2.view.SquareCameraPreview
+            android:id="@+id/view_finder"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <Chronometer
+            android:id="@+id/hour_meter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="10dp" />
+
+        <ImageButton
+            android:id="@+id/start_recording"
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="20dp"
+            android:background="@mipmap/video"
+            android:contentDescription="录制"
+            android:scaleType="fitCenter" />
+
+        <ImageView
+            android:id="@+id/switchCamera"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_marginLeft="20dp"
+            android:layout_marginBottom="20dp"
+            android:background="@mipmap/switch_camera" />
+
+        <ImageView
+            android:id="@+id/im_right"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentBottom="true"
+            android:layout_marginRight="20dp"
+            android:layout_marginBottom="20dp"
+            android:background="@mipmap/screen" />
+
+        <SeekBar
+            android:id="@+id/seek_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_above="@id/im_right"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="40dp"
+            android:max="100"
+           />
+    </RelativeLayout>
+
+    <com.personal.xj.easycamera2.focus.AnimationImageView
+        android:id="@+id/img_focus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@mipmap/focus"
+        android:visibility="invisible" />
+    <TextView
+        android:id="@+id/bigPrint"
+        android:layout_gravity="center"
+        android:textStyle="bold"
+        android:textColor="@color/White"
+        android:textSize="32dp"
+
+        android:visibility="gone"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+</FrameLayout>
