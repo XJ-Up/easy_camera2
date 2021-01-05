@@ -13,22 +13,25 @@ import android.view.ScaleGestureDetector
 import android.view.ScaleGestureDetector.SimpleOnScaleGestureListener
 import android.view.SurfaceView
 import androidx.annotation.RequiresApi
+import com.personal.xj.easycamera2.monitor.FocusPositionTouchEvent
 import com.personal.xj.easycamera2.monitor.ISeekBarUpData
+import com.personal.xj.easycamera2.monitor.MySurfaceTouchEvent
 import com.personal.xj.easycamera2.utils.Zoom
 import kotlin.math.roundToInt
+
 @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
 class SquareCameraPreview : SurfaceView {
     private var iUpdate: ISeekBarUpData? = null
     private var mScaleFactor = 1
     private var mScaleDetector: ScaleGestureDetector? = null
     private var mContext: Context? = null
-    private  var mCameraBuilder: CaptureRequest.Builder?=null
-    private  var  mCharacteristics: CameraCharacteristics?=null
-    private  var  mZoom: Zoom?=null
-    private  var  mSession:CameraCaptureSession?=null
-    private  var  mHandler:Handler?=null
+    private var mCameraBuilder: CaptureRequest.Builder? = null
+    private var mCharacteristics: CameraCharacteristics? = null
+    private var mZoom: Zoom? = null
+    private var mSession: CameraCaptureSession? = null
+    private var mHandler: Handler? = null
     private var mFocusPositionTouchEvent: FocusPositionTouchEvent? = null
-    private  var mMySurfaceTouchEvent:MySurfaceTouchEvent?=null
+    private var mMySurfaceTouchEvent: MySurfaceTouchEvent? = null
 
 
     constructor(context: Context) : super(context) {
@@ -55,7 +58,9 @@ class SquareCameraPreview : SurfaceView {
         mContext = context
         mScaleDetector = ScaleGestureDetector(context, ScaleListener())
     }
+
     private var aspectRatio = 0f
+
     /**
      * Measure the view and its content to determine the measured width and the
      * measured height
@@ -88,6 +93,7 @@ class SquareCameraPreview : SurfaceView {
             setMeasuredDimension(newWidth, newHeight)
         }
     }
+
     fun setAspectRatio(width: Int, height: Int) {
         //打印
         require(width > 0 && height > 0) {
@@ -104,11 +110,16 @@ class SquareCameraPreview : SurfaceView {
     /**
      * 设置Camera的信息，后续变焦使用
      */
-    fun  setCamera(session: CameraCaptureSession,characteristics: CameraCharacteristics?,cameraBuilder: CaptureRequest.Builder?,handler: Handler){
-        mSession=session
-        mCameraBuilder=cameraBuilder
-        mCharacteristics=characteristics
-        mHandler=handler
+    fun setCamera(
+        session: CameraCaptureSession,
+        characteristics: CameraCharacteristics?,
+        cameraBuilder: CaptureRequest.Builder?,
+        handler: Handler
+    ) {
+        mSession = session
+        mCameraBuilder = cameraBuilder
+        mCharacteristics = characteristics
+        mHandler = handler
         mZoom = Zoom(mCharacteristics)
     }
 
@@ -130,7 +141,7 @@ class SquareCameraPreview : SurfaceView {
 
     private fun handleZoom() {
 
-        mCameraBuilder?.let {builder->
+        mCameraBuilder?.let { builder ->
             var zoom = mZoom?.getZoom(builder)
             zoom?.let {
                 if (mScaleFactor == ZOOM_IN) {
@@ -139,7 +150,7 @@ class SquareCameraPreview : SurfaceView {
                     zoom -= ZOOM_DELTA.toFloat()
                 }
                 iUpdate?.progressUpdate(zoom)
-                mZoom?.setZoom(builder,zoom)
+                mZoom?.setZoom(builder, zoom)
                 mSession?.setRepeatingRequest(builder.build(), null, mHandler)
             }
         }
@@ -153,7 +164,7 @@ class SquareCameraPreview : SurfaceView {
             mScaleFactor = detector.scaleFactor.toInt()
             mCameraBuilder?.let {
                 /** 开始设置*/
-                    handleZoom()
+                handleZoom()
             }
             return true
         }
@@ -166,18 +177,12 @@ class SquareCameraPreview : SurfaceView {
         private const val ZOOM_DELTA = 0.1
 
     }
-    interface FocusPositionTouchEvent {
-        fun getPosition(event: MotionEvent?)
+
+    fun setMyFocusPositionTouchEvent(focusPositionTouchEvent: FocusPositionTouchEvent) {
+        mFocusPositionTouchEvent = focusPositionTouchEvent
     }
 
-    fun setmFocusPositionTouchEvent(focusPositionTouchEvent: FocusPositionTouchEvent) {
-            mFocusPositionTouchEvent = focusPositionTouchEvent
-    }
-
-    interface MySurfaceTouchEvent {
-        fun onAreaTouchEvent(event: MotionEvent?): Boolean
-    }
-    fun setMySurfaceTouchEvent(mySurfaceTouchEvent: MySurfaceTouchEvent){
-        mMySurfaceTouchEvent=mySurfaceTouchEvent
+    fun setMySurfaceTouchEvent(mySurfaceTouchEvent: MySurfaceTouchEvent) {
+        mMySurfaceTouchEvent = mySurfaceTouchEvent
     }
 }

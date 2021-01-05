@@ -15,7 +15,7 @@ import com.personal.xj.easycamera2.view.SquareCameraPreview
 /**
  *
  * @ClassName:      PreviewSessionCallback
- * @Description:     预览回掉的监听，用来完成点击聚焦
+ * @Description:     预览回调监听，用来完成点击聚焦
  * @Author:         xj
  */
 @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
@@ -24,7 +24,7 @@ class PreviewSessionCallback(
     private val mMainHandler: Handler,
     squareCameraPreview: SquareCameraPreview
 ) :
-    CaptureCallback(), SquareCameraPreview.FocusPositionTouchEvent {
+    CaptureCallback(), FocusPositionTouchEvent {
     private var mAfState = CameraMetadata.CONTROL_AF_STATE_INACTIVE
     private var mRawX = 0
     private var mRawY = 0
@@ -49,7 +49,8 @@ class PreviewSessionCallback(
         }
         mAfState = nowAfState
         mMainHandler.post {
-            judgeFocus() }
+            judgeFocus()
+        }
     }
 
     private fun judgeFocus() {
@@ -70,7 +71,7 @@ class PreviewSessionCallback(
         val margin = MarginLayoutParams(mFocusImage.layoutParams)
         margin.setMargins(
             mRawX - width / 2,
-            mRawY - height*2 ,
+            mRawY - height * 2,
             margin.rightMargin,
             margin.bottomMargin
         )
@@ -103,9 +104,8 @@ class PreviewSessionCallback(
     }
 
 
-
     init {
-        squareCameraPreview.setmFocusPositionTouchEvent(this)
+        squareCameraPreview.setMyFocusPositionTouchEvent(this)
     }
 
     override fun getPosition(event: MotionEvent?) {

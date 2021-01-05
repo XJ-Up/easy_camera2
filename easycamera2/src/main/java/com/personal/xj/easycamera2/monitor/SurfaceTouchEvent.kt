@@ -25,7 +25,7 @@ class SurfaceTouchEvent(
     private val mHandler: Handler,
     private val mPreviewSessionCallback: PreviewSessionCallback
 ) :
-    SquareCameraPreview.MySurfaceTouchEvent {
+    MySurfaceTouchEvent {
     override fun onAreaTouchEvent(event: MotionEvent?): Boolean {
         event?.let {
             when (event.action) {

@@ -33,9 +33,9 @@ import androidx.lifecycle.LiveData
  */
 @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
 class OrientationLiveData(
-        context: Context,
-        characteristics: CameraCharacteristics
-): LiveData<Int>() {
+    context: Context,
+    characteristics: CameraCharacteristics
+) : LiveData<Int>() {
 
     private val listener = object : OrientationEventListener(context.applicationContext) {
         override fun onOrientationChanged(orientation: Int) {
@@ -74,11 +74,11 @@ class OrientationLiveData(
         @JvmStatic
 
         private fun computeRelativeRotation(
-                characteristics: CameraCharacteristics,
-                surfaceRotation: Int
+            characteristics: CameraCharacteristics,
+            surfaceRotation: Int
         ): Int {
             val sensorOrientationDegrees =
-                    characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION)!!
+                characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION)!!
 
             val deviceOrientationDegrees = when (surfaceRotation) {
                 Surface.ROTATION_0 -> 0
@@ -90,7 +90,8 @@ class OrientationLiveData(
 
             // 前置摄像头的反向设备方向
             val sign = if (characteristics.get(CameraCharacteristics.LENS_FACING) ==
-                    CameraCharacteristics.LENS_FACING_FRONT) 1 else -1
+                CameraCharacteristics.LENS_FACING_FRONT
+            ) 1 else -1
 
             // 计算相对于相机方向的所需JPEG方向，以使
             // 相对于设备方向的垂直图像

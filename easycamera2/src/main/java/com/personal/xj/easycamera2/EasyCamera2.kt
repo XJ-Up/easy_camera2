@@ -5,11 +5,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import com.personal.xj.easycamera2.monitor.IEasyCamera2OutImagePath
-import com.personal.xj.easycamera2.monitor.IEasyCamera2OutVideoPath
 import com.personal.xj.easycamera2.view.Camera2Activity
 
 /**
@@ -25,37 +22,40 @@ private val PERMISSIONS_REQUIRED = arrayOf(
     Manifest.permission.WRITE_EXTERNAL_STORAGE
 )
 
-class EasyCamera2 {
+object EasyCamera2 {
+    private const val CAMERA_ACTIVITY = 3
 
-         /** image监听接口*/
-     private  var  iEasyCamera2OutImagePath:IEasyCamera2OutImagePath?=null
-     /** video监听接口*/
-     private  var  iEasyCamera2OutVideoPath:IEasyCamera2OutVideoPath?=null
-     /**
-      * 设置图片拍摄完成后path监听回调
-      */
-     fun  setImageOutMonitor(iEasyCamera2OutImagePath: IEasyCamera2OutImagePath){
-            this.iEasyCamera2OutImagePath=iEasyCamera2OutImagePath
-     }
-     /**
-      * 设置视频拍摄完成后path监听回调
-      */
-     fun  setVideoOutMonitor(iEasyCamera2OutVideoPath: IEasyCamera2OutVideoPath){
-         this.iEasyCamera2OutVideoPath=iEasyCamera2OutVideoPath
-     }
-    fun setData(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode== CAMERA_ACTIVITY&&resultCode==Activity.RESULT_OK){
-            data?.let {
-                val videoPath = data.getStringExtra("videoPath")
-                if (!videoPath.isNullOrEmpty()){
-                    iEasyCamera2OutVideoPath?.outPath(videoPath)
-                }
-                val imagePath=data.getStringExtra("imagePath")
-                if (!imagePath.isNullOrEmpty()){
-                    iEasyCamera2OutImagePath?.outPath(imagePath)
-                }
-            }
-        }
+    /** 用于检查是否已授予此应用所需的所有权限的便捷方法 */
+    private fun hasPermissions(context: Context) = PERMISSIONS_REQUIRED.all {
+        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /** image地址获取*/
+    private var imageBlock: ((String) -> Unit)? = null
+
+    /** video地址获取*/
+    private var videoBlock: ((String) -> Unit)? = null
+
+    /**
+     * 设置图片拍摄完成后path
+     */
+    fun setImageOutMonitor(block: (String) -> Unit) {
+        imageBlock = block
+    }
+
+    /**
+     * 设置视频拍摄完成后path
+     */
+    fun setVideoOutMonitor(block: (String) -> Unit) {
+        videoBlock = block
+    }
+
+    fun getImageOutMonitor(): ((String) -> Unit)? {
+        return imageBlock
+    }
+
+    fun getVideoOutMonitor(): ((String) -> Unit)? {
+        return videoBlock
     }
 
     fun jumpActivity(activity: Activity) {
@@ -64,15 +64,6 @@ class EasyCamera2 {
             activity.startActivityForResult(intent, CAMERA_ACTIVITY)
         } else {
             Toast.makeText(activity, "权限未给予", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    companion object {
-        const val CAMERA_ACTIVITY = 3
-
-        /** 用于检查是否已授予此应用所需的所有权限的便捷方法 */
-        fun hasPermissions(context: Context) = PERMISSIONS_REQUIRED.all {
-            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
         }
     }
 

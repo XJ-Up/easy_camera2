@@ -6,5 +6,5 @@ package com.personal.xj.easycamera2.monitor
  * @Author:         xj
  */
 interface ISeekBarUpData {
-    fun  progressUpdate(progress:Float)
+    fun progressUpdate(progress: Float)
 }

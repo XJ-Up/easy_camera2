@@ -1,5 +1,3 @@
-
-
 package com.personal.xj.easycamera2.utils
 
 import android.annotation.SuppressLint
@@ -43,11 +41,11 @@ fun getDisplaySmartSize(display: Display): SmartSize {
  * 返回最大的可用PREVIEW大小。想要查询更多的信息 */
 @SuppressLint("Assert")
 @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-fun <T>getPreviewOutputSize(
-        display: Display,
-        characteristics: CameraCharacteristics,
-        targetClass: Class<T>,
-        format: Int? = null
+fun <T> getPreviewOutputSize(
+    display: Display,
+    characteristics: CameraCharacteristics,
+    targetClass: Class<T>,
+    format: Int? = null
 ): Size {
 
     //查找哪个更小：屏幕或1080p
@@ -57,7 +55,8 @@ fun <T>getPreviewOutputSize(
 
     // 如果提供了图像格式，请使用它来确定支持的尺寸；否则使用目标类
     val config = characteristics.get(
-            CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
+        CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP
+    )!!
     if (format == null)
         assert(StreamConfigurationMap.isOutputSupportedFor(targetClass))
     else
@@ -67,8 +66,8 @@ fun <T>getPreviewOutputSize(
 
     // 获取可用尺寸并按面积从大到小排序
     val validSizes = allSizes
-            .sortedWith(compareBy { it.height * it.width })
-            .map { SmartSize(it.width, it.height) }.reversed()
+        .sortedWith(compareBy { it.height * it.width })
+        .map { SmartSize(it.width, it.height) }.reversed()
 
     //然后，获得小于或等于最大尺寸的最大输出尺寸
     return validSizes.first { it.long <= maxSize.long && it.short <= maxSize.short }.size

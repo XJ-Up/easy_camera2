@@ -8,7 +8,6 @@ import android.view.animation.Animation
 import com.personal.xj.easycamera2.R
 import com.personal.xj.easycamera2.utils.SleepThread
 
-
 /**
  *
  * @ClassName:      AnimationImageView
@@ -41,7 +40,6 @@ class AnimationImageView : androidx.appcompat.widget.AppCompatImageView {
     ) : super(context, attrs, defStyleAttr) {
         mContext = context
     }
-
 
 
     fun setmMainHandler(mMainHandler: Handler?) {

@@ -21,6 +21,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
+import com.personal.xj.easycamera2.EasyCamera2
 import com.personal.xj.easycamera2.R
 import com.personal.xj.easycamera2.bean.Args
 import com.personal.xj.easycamera2.focus.AnimationImageView
@@ -106,6 +107,8 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
         createRecorder(surface).apply {
             prepare()
             release()
+            var delete = outputFile.delete()
+            Log.e("测试打折的", delete.toString())
         }
         surface
     }
@@ -239,13 +242,22 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
             }
         }
 
+    /** image监听接口*/
+    private val iEasyCamera2OutImagePath: ((String) -> Unit)? by lazy {
+        EasyCamera2.getImageOutMonitor()
+    }
+
+    /** video监听接口*/
+    private val iEasyCamera2OutVideoPath: ((String) -> Unit)? by lazy {
+        EasyCamera2.getVideoOutMonitor()
+    }
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cammer)
 
-        args = Args("0", 4000, 3000, 30,256)
+        args = Args("0", 4000, 3000, 30, 256)
         hour_meter.text = "00:00:00"
         hour_meter.setOnChronometerTickListener {
             recordingTimer++
@@ -300,7 +312,11 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
                                     previewRequestBuilder.addTarget(recorderSurface)
                                     // 开始记录重复的请求，这将停止正在进行的预览
                                     //  重复请求而不必显式调用session.stopRepeating
-                                    session.setRepeatingRequest(previewRequestBuilder.build(), null, cameraHandler)
+                                    session.setRepeatingRequest(
+                                        previewRequestBuilder.build(),
+                                        null,
+                                        cameraHandler
+                                    )
 
                                     // 完成录音机设置并开始录音
                                     recorder.apply {
@@ -317,43 +333,47 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
 
                             }
 
-                            MotionEvent.ACTION_UP -> lifecycleScope.launch(Dispatchers.IO) {
-                                if (isVideoTape.not()) {
-                                    isVideoTape = true
-                                    runOnUiThread {
-                                        start_recording.setBackgroundResource(R.mipmap.shooting)
+                            MotionEvent.ACTION_UP ->
+
+                                lifecycleScope.launch(Dispatchers.IO) {
+                                    if (isVideoTape.not()) {
+                                        isVideoTape = true
+                                        runOnUiThread {
+                                            start_recording.setBackgroundResource(R.mipmap.shooting)
+                                        }
+
+                                    } else {
+                                        // 录制完成后解锁屏幕旋转
+                                        requestedOrientation =
+                                            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+
+                                        // 需要至少记录MIN_REQUIRED_RECORDING_TIME_MILLIS
+                                        val elapsedTimeMillis =
+                                            System.currentTimeMillis() - recordingStartMillis
+                                        if (elapsedTimeMillis < MIN_REQUIRED_RECORDING_TIME_MILLIS) {
+                                            delay(MIN_REQUIRED_RECORDING_TIME_MILLIS - elapsedTimeMillis)
+                                        }
+                                        val path = outputFile.path
+                                        recorder.stop()
+
+
+                                        //将媒体文件广播到系统的其余部分
+                                        MediaScannerConnection.scanFile(
+                                            view.context,
+                                            arrayOf(outputFile.absolutePath),
+                                            null,
+                                            null
+                                        )
+                                        runOnUiThread {
+                                            start_recording.setBackgroundResource(R.mipmap.screen)
+                                            iEasyCamera2OutVideoPath?.invoke(path)
+                                        }
+                                        // 完成当前的相机屏幕
+                                        delay(ANIMATION_SLOW_MILLIS)
+                                        finish()
                                     }
 
-                                } else {
-                                    // 录制完成后解锁屏幕旋转
-                                    requestedOrientation =
-                                        ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-
-                                    // 需要至少记录MIN_REQUIRED_RECORDING_TIME_MILLIS
-                                    val elapsedTimeMillis =
-                                        System.currentTimeMillis() - recordingStartMillis
-                                    if (elapsedTimeMillis < MIN_REQUIRED_RECORDING_TIME_MILLIS) {
-                                        delay(MIN_REQUIRED_RECORDING_TIME_MILLIS - elapsedTimeMillis)
-                                    }
-
-                                    val path = outputFile.path
-                                    recorder.stop()
-                                    val intent = Intent()
-                                    intent.putExtra("videoPath",path)
-                                    setResult(Activity.RESULT_OK,intent)
-                                    //将媒体文件广播到系统的其余部分
-                                    MediaScannerConnection.scanFile(
-                                        view.context, arrayOf(outputFile.absolutePath), null, null
-                                    )
-                                    runOnUiThread {
-                                        start_recording.setBackgroundResource(R.mipmap.screen)
-                                    }
-                                    // 完成当前的相机屏幕
-                                    delay(ANIMATION_SLOW_MILLIS)
-                                    finish()
                                 }
-
-                            }
                         }
 
                         true
@@ -373,21 +393,27 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
                             updatePreview()
                             // 将结果保存到磁盘
                             val output = saveResult(result)
+
                             Log.d(TAG, "图片已保存: ${output.absolutePath}")
 
                             // 如果结果是JPEG文件，请使用方向信息更新EXIF元数据
                             if (output.extension == "jpg") {
                                 val exif = ExifInterface(output.absolutePath)
                                 exif.setAttribute(
-                                    ExifInterface.TAG_ORIENTATION, result.orientation.toString())
+                                    ExifInterface.TAG_ORIENTATION, result.orientation.toString()
+                                )
                                 exif.saveAttributes()
                                 Log.d(TAG, "EXIF 元数据已保存: ${output.absolutePath}")
                             }
-
+                            runOnUiThread {
+                                val path = output.absolutePath
+                                iEasyCamera2OutImagePath?.invoke(path)
+                            }
                         }
 
                         // 拍照后重新启用点击侦听器
                         it.post { it.isEnabled = true }
+
                     }
                 }
             }
@@ -402,14 +428,14 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
         viewFinder.setSeekBarUpData(this)
         seek_bar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-               //得到当前seekBar的最大值
-                val  max=seekBar?.max
+                //得到当前seekBar的最大值
+                val max = seekBar?.max
                 //因为seekbar的起始值为0而手机缩放的起始值为1所以加10
                 val a = max?.plus(10)?.let { maxValue?.div(it) }
-                val pre = (progress+10) * a!!
+                val pre = (progress + 10) * a!!
 
                 val format = String.format("%.1f", pre)
-                if (format!="0.9"){
+                if (format != "0.9") {
                     bigPrint.text = format
                 }
 
@@ -418,11 +444,11 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
-                bigPrint.visibility=View.VISIBLE
+                bigPrint.visibility = View.VISIBLE
             }
 
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                bigPrint.visibility=View.GONE
+                bigPrint.visibility = View.GONE
             }
 
         })
@@ -499,6 +525,7 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
         setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
         setInputSurface(surface)
     }
+
     /**
      * 用于使用[CameraDevice.TEMPLATE_STILL_CAPTURE]捕获静止图像的助手功能
      * 模板。它在[CaptureResult]和[Image]结果之间执行同步
@@ -509,7 +536,8 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
 
         // 冲洗残留在图像读取器中的所有图像
         @Suppress("ControlFlowWithEmptyBody")
-        while (imageReader.acquireNextImage() != null) {}
+        while (imageReader.acquireNextImage() != null) {
+        }
 
         // 启动新的图像队列
         val imageQueue = ArrayBlockingQueue<Image>(IMAGE_BUFFER_SIZE)
@@ -519,69 +547,78 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
             imageQueue.add(image)
         }, imageReaderHandler)
         previewRequestBuilder.addTarget(imageReader.surface)
-        session.capture(previewRequestBuilder.build(), object : CameraCaptureSession.CaptureCallback() {
+        session.capture(
+            previewRequestBuilder.build(),
+            object : CameraCaptureSession.CaptureCallback() {
 
-            override fun onCaptureStarted(
-                session: CameraCaptureSession,
-                request: CaptureRequest,
-                timestamp: Long,
-                frameNumber: Long) {
-                super.onCaptureStarted(session, request, timestamp, frameNumber)
+                override fun onCaptureStarted(
+                    session: CameraCaptureSession,
+                    request: CaptureRequest,
+                    timestamp: Long,
+                    frameNumber: Long
+                ) {
+                    super.onCaptureStarted(session, request, timestamp, frameNumber)
 
-            }
-
-            override fun onCaptureCompleted(
-                session: CameraCaptureSession,
-                request: CaptureRequest,
-                result: TotalCaptureResult) {
-                super.onCaptureCompleted(session, request, result)
-                val resultTimestamp = result.get(CaptureResult.SENSOR_TIMESTAMP)
-                Log.d(TAG, "捕获结果已收到: $resultTimestamp")
-
-                //设置超时以防捕获的图像从管道中丢失
-                val exc = TimeoutException("图像出队时间过长")
-                val timeoutRunnable = Runnable {
-                    cont.resumeWithException(exc)
                 }
-                imageReaderHandler.postDelayed(timeoutRunnable, IMAGE_CAPTURE_TIMEOUT_MILLIS)
 
-                // 在协程的上下文中循环，直到带有匹配时间戳的图像出现为止
-                // 我们需要再次启动协程上下文，因为回调是在
-                // 提供给`capture`方法的处理程序，不在我们的协程环境中
-                @Suppress("BlockingMethodInNonBlockingContext")
-                lifecycleScope.launch(cont.context) {
-                    while (true) {
+                override fun onCaptureCompleted(
+                    session: CameraCaptureSession,
+                    request: CaptureRequest,
+                    result: TotalCaptureResult
+                ) {
+                    super.onCaptureCompleted(session, request, result)
+                    val resultTimestamp = result.get(CaptureResult.SENSOR_TIMESTAMP)
+                    Log.d(TAG, "捕获结果已收到: $resultTimestamp")
 
-                        // 时间戳不匹配时出队图像
-                        val image = imageQueue.take()
-                        // TODO(owahltinez): b/142011420
+                    //设置超时以防捕获的图像从管道中丢失
+                    val exc = TimeoutException("图像出队时间过长")
+                    val timeoutRunnable = Runnable {
+                        cont.resumeWithException(exc)
+                    }
+                    imageReaderHandler.postDelayed(timeoutRunnable, IMAGE_CAPTURE_TIMEOUT_MILLIS)
 
-                        Log.d(TAG, "匹配图像出队: ${image.timestamp}")
+                    // 在协程的上下文中循环，直到带有匹配时间戳的图像出现为止
+                    // 我们需要再次启动协程上下文，因为回调是在
+                    // 提供给`capture`方法的处理程序，不在我们的协程环境中
+                    @Suppress("BlockingMethodInNonBlockingContext")
+                    lifecycleScope.launch(cont.context) {
+                        while (true) {
 
-                        // 取消设置图片阅读器监听器
-                        imageReaderHandler.removeCallbacks(timeoutRunnable)
-                        imageReader.setOnImageAvailableListener(null, null)
+                            // 时间戳不匹配时出队图像
+                            val image = imageQueue.take()
+                            // TODO(owahltinez): b/142011420
 
-                        //清除图像队列（如果还有）
-                        while (imageQueue.size > 0) {
-                            imageQueue.take().close()
+                            Log.d(TAG, "匹配图像出队: ${image.timestamp}")
+
+                            // 取消设置图片阅读器监听器
+                            imageReaderHandler.removeCallbacks(timeoutRunnable)
+                            imageReader.setOnImageAvailableListener(null, null)
+
+                            //清除图像队列（如果还有）
+                            while (imageQueue.size > 0) {
+                                imageQueue.take().close()
+                            }
+
+                            // 计算EXIF方向元数据
+                            val rotation = relativeOrientation.value ?: 0
+                            val mirrored = characteristic.get(CameraCharacteristics.LENS_FACING) ==
+                                    CameraCharacteristics.LENS_FACING_FRONT
+                            val exifOrientation = computeExifOrientation(rotation, mirrored)
+
+                            //建立结果并恢复进度
+                            cont.resume(
+                                CombinedCaptureResult(
+                                    image, result, exifOrientation, imageReader.imageFormat
+                                )
+                            )
+
+                            //无需中断，协程将暂停
                         }
-
-                        // 计算EXIF方向元数据
-                        val rotation = relativeOrientation.value ?: 0
-                        val mirrored = characteristic.get(CameraCharacteristics.LENS_FACING) ==
-                                CameraCharacteristics.LENS_FACING_FRONT
-                        val exifOrientation = computeExifOrientation(rotation, mirrored)
-
-                        //建立结果并恢复进度
-                        cont.resume(CombinedCaptureResult(
-                            image, result, exifOrientation, imageReader.imageFormat))
-
-                        //无需中断，协程将暂停
                     }
                 }
-            }
-        }, cameraHandler)
+            },
+            cameraHandler
+        )
     }
 
     /** 用于将[CombinedCaptureResult]保存到[File]中的Helper函数*/
@@ -595,11 +632,6 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
                 try {
                     val output = createFile("jpg")
                     FileOutputStream(output).use { it.write(bytes) }
-                    val path = output.path
-                    val intent = Intent()
-                    intent.putExtra("imagePath",path)
-                    setResult(Activity.RESULT_OK,intent)
-                    Toast.makeText(this,"拍照完成，文件已保存：$path",Toast.LENGTH_LONG).show()
                     cont.resume(output)
                 } catch (exc: IOException) {
                     Log.e(TAG, "无法将JPEG图像写入文件", exc)
@@ -611,13 +643,8 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
             ImageFormat.RAW_SENSOR -> {
                 val dngCreator = DngCreator(characteristic, result.metadata)
                 try {
-                    val output = createFile( "dng")
+                    val output = createFile("dng")
                     FileOutputStream(output).use { dngCreator.writeImage(it, result.image) }
-                    val path = output.path
-                    val intent = Intent()
-                    intent.putExtra("imagePath",path)
-                    setResult(Activity.RESULT_OK,intent)
-                    Toast.makeText(this,"拍照完成，文件已保存：$path",Toast.LENGTH_LONG).show()
                     cont.resume(output)
                 } catch (exc: IOException) {
                     Log.e(TAG, "无法将DNG图片写入文件", exc)
@@ -633,6 +660,7 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
             }
         }
     }
+
     /**
      * 在主线程中的线程中开始所有相机的操作 ，
      */
@@ -642,12 +670,14 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
         camera = openCamera(cameraManager, args.id, cameraHandler)
         // 初始化图像读取器，该图像读取器将用于捕获静态照片
         val size = characteristic.get(
-            CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
+            CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP
+        )!!
             .getOutputSizes(args.pixelFormat).maxBy { it.height * it.width }!!
         imageReader = ImageReader.newInstance(
-            size.width, size.height, args.pixelFormat, IMAGE_BUFFER_SIZE)
+            size.width, size.height, args.pixelFormat, IMAGE_BUFFER_SIZE
+        )
         //创建相机输出帧的面列表
-        val targets = listOf(viewFinder.holder.surface,recorderSurface,imageReader.surface)
+        val targets = listOf(viewFinder.holder.surface, recorderSurface, imageReader.surface)
         //使用 打开的相机和配合好的面开始捕捉会话  //尽可能的频繁发送 捕获请求 ，直到 会话结束 即  session.stopRepeating（）被调用
         session = createCaptureSession(camera, targets, cameraHandler)
 
@@ -663,8 +693,6 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
             camera.createCaptureRequest(CameraDevice.TEMPLATE_VIDEO_SNAPSHOT).apply {
                 // 添加预览和记录曲面目标
                 addTarget(viewFinder.holder.surface)
-
-
 //                // 为所有目标设置用户请求的FPS
 //                set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(args.fps, args.fps))
             }
@@ -696,15 +724,17 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
         updatePreview()
 
     }
+
     /** 手指缩放同步 SeekBar*/
     override fun progressUpdate(progress: Float) {
         //得到当前seekBar的最大值
-        val  max=seek_bar.max
+        val max = seek_bar.max
         //因为seekbar的起始值为0而手机缩放的起始值为1所以加10
         val a = max.plus(10).let { maxValue?.div(it) }
-        val result:Int = (progress/a!!-10).roundToInt()
-        seek_bar.progress=result
+        val result: Int = (progress / a!! - 10).roundToInt()
+        seek_bar.progress = result
     }
+
     /**
      * 切换前后摄像头
      */
@@ -787,6 +817,7 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
         }, handler)
 
     }
+
     /** 将旋转和镜像信息转换为[ExifInterface]常量之一*/
     fun computeExifOrientation(rotationDegrees: Int, mirrored: Boolean) = when {
         rotationDegrees == 0 && !mirrored -> ExifInterface.ORIENTATION_NORMAL
@@ -817,6 +848,7 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
             Log.e(TAG, "关闭相机时出错", exc)
         }
     }
+
     companion object {
         private val TAG = Camera2Activity::class.java.simpleName
         private const val RECORDER_VIDEO_BITRATE: Int = 10_000_000
@@ -825,10 +857,13 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
         const val WINDOW_TEXT_DISAPPEAR = 101
         const val FOCUS_AGAIN = 102
         const val ANIMATION_SLOW_MILLIS = 100L
+
         /** 将保存在读取器缓冲区中的最大图像数 */
         private const val IMAGE_BUFFER_SIZE: Int = 3
+
         /** Maximum time allowed to wait for the result of an image capture */
         private const val IMAGE_CAPTURE_TIMEOUT_MILLIS: Long = 5000
+
         /** 帮助程序数据类，用于保存捕获元数据及其关联的图像 */
         data class CombinedCaptureResult(
             val image: Image,
@@ -838,6 +873,7 @@ class Camera2Activity : AppCompatActivity(), ISeekBarUpData {
         ) : Closeable {
             override fun close() = image.close()
         }
+
         /**
          *创建一个以当前时间为名字的文件 用于存储照相机拍摄的资源
          */
