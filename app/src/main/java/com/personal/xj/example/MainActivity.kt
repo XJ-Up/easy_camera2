@@ -18,15 +18,15 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        test.setImageOutMonitor {
+        EasyCamera2.setImageOutMonitor {
             info.text = it
         }
-        test.setVideoOutMonitor {
+        EasyCamera2.setVideoOutMonitor {
             info1.text = it
         }
 
         button.setOnClickListener {
-            test.jumpActivity(this)
+            EasyCamera2.jumpActivity(this)
         }
     }
 
